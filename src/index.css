@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Viewport containment — full ancestor chain enforces height constraints */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Clerk Component Styling — uses --sophia-* CSS custom properties set by ThemeProvider */
+.cl-formButtonPrimary {
+  background-color: var(--sophia-teal) !important;
+  color: var(--sophia-white) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: var(--sophia-tealDeep) !important;
+}
+
+.cl-logoBox {
+  display: none !important;
+}
+
+.cl-headerTitle {
+  color: var(--sophia-teal) !important;
+  size: 2.4rem !important;
+}
+
+.cl-footerActionLink {
+  color: var(--sophia-teal) !important;
+}
+
+/* Style Clerk "Last used" badge to be more visible */
+.cl-socialButtonsBlockButton .cl-badge,
+[data-localization-key*="lastUsed"],
+[data-localization-key*="badge"] {
+  background-color: var(--sophia-teal) !important;
+  color: var(--sophia-white) !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+  opacity: 1 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Ensure Clerk components are properly contained */
+.cl-rootBox,
+.cl-card {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Auth layout specific adjustments */
+.cl-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--sophia-teal);
+    --primary-foreground: var(--sophia-white);
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --sidebar-background: var(--sophia-sidebarBg);
+    --sidebar-foreground: var(--sophia-text);
+    --sidebar-primary: var(--sophia-teal);
+    --sidebar-primary-foreground: var(--sophia-white);
+    --sidebar-accent: var(--sophia-activeBg);
+    --sidebar-accent-foreground: var(--sophia-teal);
+    --sidebar-border: var(--sophia-border);
+    --sidebar-ring: var(--sophia-teal);
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--sophia-teal);
+    --primary-foreground: var(--sophia-white);
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

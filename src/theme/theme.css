@@ -1,0 +1,166 @@
+/* ─── SOPHIA Theme Styles ─── */
+
+/* Font imports */
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&family=Tomorrow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* ─── Animation Keyframes ─── */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes sophiaStreamCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes orbBreathe {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes iridShift {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes iridRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes crystalPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.025); }
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes notifSlide {
+  from { opacity: 0; transform: translateY(-20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes voiceEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dotGlow {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+
+@keyframes voiceRipple {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes voiceRipple2 {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+@keyframes voiceRipple3 {
+  0% { transform: scale(1); opacity: 0.3; }
+  100% { transform: scale(3.6); opacity: 0; }
+}
+
+/* Phase 08.11: OrbDonutMorph label animations */
+@keyframes labelFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes labelFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(4px); }
+}
+
+/* AuthLayout /login orb — shared with SophiaChat empty-state (keep in sync with AuthLayout.tsx inline names) */
+@keyframes authOrbGlowPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+@keyframes authOrbRipple1 {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.015); opacity: 0; }
+}
+@keyframes authOrbRipple2 {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.03); opacity: 0; }
+}
+@keyframes authOrbRipple3 {
+  0% { transform: scale(1); opacity: 0.3; }
+  100% { transform: scale(1.045); opacity: 0; }
+}
+
+/* SophiaChat empty orb — same motion stack as /login (orbFloat + ripples + glow pulse) */
+.sophia-chat-empty-orb-auth {
+  animation: orbFloat 5s ease-in-out infinite;
+}
+
+/* prefers-reduced-motion: skip all morph animations */
+@media (prefers-reduced-motion: reduce) {
+  .orb-donut-morph * {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+  .sophia-chat-empty-orb-auth {
+    animation: none !important;
+  }
+  .sophia-chat-empty-orb-auth .sophia-chat-empty-orb-glow {
+    animation: none !important;
+    opacity: 0.55;
+  }
+  .sophia-chat-empty-orb-auth .sophia-chat-empty-orb-ripple {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* ─── Hover Utility Classes ─── */
+.hover-card {
+  transition: background 0.2s ease;
+}
+.hover-card:hover {
+  background: var(--sophia-cardHover);
+}
+
+.hover-bg {
+  transition: background 0.2s ease;
+}
+.hover-bg:hover {
+  background: var(--sophia-hoverBg);
+}
+
+.hover-teal {
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.hover-teal:hover {
+  background: var(--sophia-activeBg);
+  color: var(--sophia-teal);
+}
+
+.nav-active {
+  background: var(--sophia-activeBg);
+  color: var(--sophia-teal);
+}

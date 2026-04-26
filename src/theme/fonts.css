@@ -1,0 +1,55 @@
+@font-face {
+  font-family: 'Futura';
+  src: url('/fonts/Futura Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Agrandir';
+  src: url('/fonts/agrandir-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Wide';
+  src: url('/fonts/Wide-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  src: url('/fonts/roboto-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Tomorrow';
+  src: url('/fonts/tomorrow-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Brand simple text overrides — replaces Josefin Sans heading usage with Futura. */
+:root {
+  --font-body: 'Tomorrow', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Futura', 'Tomorrow', system-ui, -apple-system, sans-serif;
+  --font-display: 'Wide', 'Futura', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+/* Map every Josefin Sans usage to Futura (the simple brand heading face). */
+[style*="Josefin Sans"] {
+  font-family: 'Futura', 'Tomorrow', system-ui, sans-serif !important;
+}
