@@ -17,14 +17,18 @@ import { ChevronDown, ChevronRight, MoreHorizontal, Mic, MicOff, Check, ArrowRig
 import { C, useThemeMode } from '../theme';
 import {
   meetings as allMeetings,
+  recordings as mockRecordings,
   teamMembers,
   teamTrends,
   calendarEvents,
   weeklyInsight,
   teamInsights,
+  teamAverageDrivers,
+  memberDrivers,
 } from '../mock-data';
 import { SophiaGlowOrb } from '../components/SophiaGlowOrb';
 import MotivationPanel from '../components/MotivationPanel';
+import MotivationRadar from '../components/MotivationRadar';
 import { useActiveTeam } from '../context/ActiveTeamContext';
 
 const formatTime = (iso: string) => {
@@ -33,6 +37,41 @@ const formatTime = (iso: string) => {
 };
 
 const formatTimeRange = (startIso: string, endIso: string) => `${formatTime(startIso)} – ${formatTime(endIso)}`;
+
+const formatDateLabel = (iso: string) => {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return d.toLocaleDateString('en-GB', { weekday: 'short' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
+// Local source label + colour mapping to match the Studio recordings UI
+const sourceLabel: Record<string, string> = {
+  mic: 'Recorded live',
+  meeting: 'Live meeting capture',
+  fireflies: 'Imported from API',
+  otter: 'Imported from Otter',
+  granola: 'Imported from Granola',
+  teams: 'Imported from Teams',
+  meet: 'Imported from Google Meet',
+  zoom: 'Imported from Zoom',
+  upload: 'Uploaded',
+};
+
+const sourceColour: Record<string, string> = {
+  mic: '#C2F542',
+  meeting: '#A0E0FF',
+  fireflies: '#FF6F50',
+  otter: '#1FB6FF',
+  granola: '#9DBE6E',
+  teams: '#5059C9',
+  meet: '#34A853',
+  zoom: '#2D8CFF',
+  upload: '#D8B7FF',
+};
 
 interface DayBucket {
   day: number;
@@ -185,6 +224,21 @@ export default function Home() {
   const trendColour = activeTeam.default_colour;
 
   const memberOf = useMemo(() => activeTeam.member_ids.map((id) => teamMembers.find((m) => m.id === id)!), [activeTeam]);
+
+  // Inline selection state for individual/team motivation (renders inside the right placeholder)
+  const [sheetMemberId, setSheetMemberId] = useState<string | null>(null);
+  const [sheetMemberName, setSheetMemberName] = useState<string>('');
+
+  const openForMember = (name: string) => {
+    const m = teamMembers.find((t) => t.name === name) || null;
+    setSheetMemberId(m ? m.id : null);
+    setSheetMemberName(name);
+  };
+
+  const openOverall = () => {
+    setSheetMemberId(null);
+    setSheetMemberName('Overall Team');
+  };
 
   return (
     <div style={{
@@ -397,62 +451,132 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Growth Sessions (mirrors Meeting reflections) ─── */}
+      {/* ─── Growth Sessions (moved meeting reflections here) ─── */}
       <Section title="Growth Sessions">
+
         <div style={{
           background: C.card,
           border: `1px solid ${C.border}`,
           borderRadius: 16,
           overflow: 'hidden',
         }}>
-          {([
-            { id: 'gs-1', title: 'Growth sync with Sophia', date_label: 'Today', duration_min: 35, team: 'Leadership', participants: 2, unread: true },
-            { id: 'gs-2', title: 'Pattern coaching: Ben', date_label: 'Yesterday', duration_min: 50, team: 'Communication', participants: 2, unread: false },
-            { id: 'gs-3', title: 'Hold one breath workshop', date_label: 'Mon', duration_min: 45, team: 'Team dynamics', participants: 4, unread: false },
-            { id: 'gs-4', title: 'Silence as data review', date_label: 'Last week', duration_min: 30, team: '1:1 coaching', participants: 2, unread: false },
-          ] as const).map((g, i) => (
-            <div key={g.id} style={{ borderTop: i === 0 ? 'none' : `1px solid ${C.border}` }}>
-              <button
-                onClick={() => { /* placeholder — optionally navigate to session */ }}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: 'transparent', border: 'none', cursor: 'pointer', padding: '18px 22px',
-                  textAlign: 'left', color: C.text, fontFamily: "'Tomorrow', sans-serif",
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-                  {g.unread && (
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.teal, flexShrink: 0 }} />
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontFamily: "'Futura', 'Tomorrow', sans-serif", color: C.text, marginBottom: 3 }}>
-                      {g.title}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: C.textDim }}>
-                      {g.date_label} · {g.duration_min}m · {g.team} · {g.participants} attendees
+          {meetings.map((m, i) => {
+            const open = isOverall ? !closedMeetingIds.has(m.id) : openMeetingId === m.id;
+            const toggleOpen = () => {
+              if (isOverall) {
+                setClosedMeetingIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(m.id)) next.delete(m.id);
+                  else next.add(m.id);
+                  return next;
+                });
+              } else {
+                setOpenMeetingId(open ? null : m.id);
+              }
+            };
+            return (
+              <div key={m.id} style={{
+                borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
+              }}>
+                <button
+                  onClick={toggleOpen}
+                  onKeyDown={(e) => {
+                    // Arrow keys collapse / expand the meeting analysis.
+                    if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && open) {
+                      e.preventDefault();
+                      toggleOpen();
+                    } else if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') && !open) {
+                      e.preventDefault();
+                      toggleOpen();
+                    }
+                  }}
+                  aria-expanded={open}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '18px 22px',
+                    textAlign: 'left',
+                    color: C.text,
+                    fontFamily: "'Tomorrow', sans-serif",
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+                    {m.unread && (
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.teal, flexShrink: 0 }} />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontFamily: "'Futura', 'Tomorrow', sans-serif", color: C.text, marginBottom: 3 }}>
+                        {m.title}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: C.textDim }}>
+                        {m.date_label} · {m.duration_min}m · {m.team} · {m.participants.length} attendees
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleSync(g.id); }}
-                    aria-pressed={syncedIds.has(g.id)}
-                    title={syncedIds.has(g.id) ? 'Unsync from Sophia' : 'Sync with Sophia'}
-                    style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                  >
-                    <SophiaGlowOrb size={28} showWordmark={false} glow={syncedIds.has(g.id)} />
-                    <div style={{ fontSize: 11, color: syncedIds.has(g.id) ? C.text : C.textDim }}>{syncedIds.has(g.id) ? 'Synced' : 'Sync'}</div>
-                  </button>
-                  <ChevronDown size={16} style={{ color: C.textDim, flexShrink: 0 }} />
-                </div>
-              </button>
-            </div>
-          ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleSync(m.id); }}
+                      aria-pressed={syncedIds.has(m.id)}
+                      title={syncedIds.has(m.id) ? 'Unsync from Sophia' : 'Sync with Sophia'}
+                      style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                      <SophiaGlowOrb size={28} showWordmark={false} glow={syncedIds.has(m.id)} />
+                      <div style={{ fontSize: 11, color: syncedIds.has(m.id) ? C.text : C.textDim }}>{syncedIds.has(m.id) ? 'Synced' : 'Sync'}</div>
+                    </button>
+                    <ChevronDown size={16} style={{
+                      color: C.textDim,
+                      transition: 'transform 0.2s',
+                      transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                      flexShrink: 0,
+                    }} />
+                  </div>
+                </button>
+
+                {open && (
+                  <div style={{ padding: '0 22px 22px' }}>
+                    <div style={{ fontSize: 11.5, color: C.textDim, marginBottom: 14 }}>
+                      {m.participants.map((p, idx) => (
+                        <span key={p}>
+                          <button
+                            onClick={() => {
+                              const member = teamMembers.find((tm) => tm.name === p);
+                              if (member) setMotivation({ open: true, memberId: member.id });
+                            }}
+                            style={{
+                              background: 'transparent', border: 'none', padding: 0,
+                              color: C.text, cursor: 'pointer', fontSize: 11.5,
+                              textDecoration: 'underline', textUnderlineOffset: 3,
+                              textDecorationColor: C.border,
+                              fontFamily: "'Tomorrow', sans-serif",
+                            }}
+                          >
+                            {p}
+                          </button>
+                          {idx < m.participants.length - 1 ? ', ' : ''}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
+                      <ReflectionBlock label="What was good" colour="#C2F542" items={m.what_was_good} />
+                      <ReflectionBlock label="Blind spots" colour="#FFB28A" items={m.blind_spots} />
+                      <ReflectionBlock label="Insight" colour="#A0E0FF" items={[m.insight]} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </Section>
 
       {/* ─── Calendar (Overall only) ─── */}
       {isOverall && (
+      <>
       <Section
         title={calendarView === 'week' ? 'This week' : 'This month'}
         right={
@@ -760,6 +884,48 @@ export default function Home() {
         </div>
         ) : null}
       </Section>
+
+      {/* Team Trend sub-section moved after calendar */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{
+          background: C.card,
+          border: `1px solid ${C.border}`,
+          borderRadius: 16,
+          padding: '14px 16px',
+          boxShadow: `0 8px 20px ${C.shadowColor}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: "'Futura', 'Tomorrow', sans-serif" }}>Team Trend</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {(['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Monthly', 'Quarterly', 'Yearly'] as const).map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setTrendWindow(b)}
+                  style={{
+                    background: b === trendWindow ? C.activeBg : 'transparent',
+                    color: b === trendWindow ? C.text : C.textDim,
+                    border: 'none', cursor: 'pointer', padding: '6px 10px', borderRadius: 999,
+                    fontSize: 11, fontWeight: 600, fontFamily: "'Tomorrow', sans-serif",
+                  }}
+                >{b}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ width: '100%', minHeight: 220 }}>
+            <TeamTrendChart series={trendSeries} labels={trendLabels} />
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {trendSeries.map((s) => (
+              <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, display: 'inline-block' }} />
+                <div style={{ fontSize: 12, color: C.textDim }}>{s.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      </>
       )}
 
       {/* ─── Team health graph (per-team only) ─── */}
@@ -895,223 +1061,100 @@ export default function Home() {
       </Section>
       )}
 
-      {/* ─── Meeting reflections (accordion) ─── */}
-      <Section title={isOverall ? 'All meetings — analysis' : 'Meeting reflections'}>
-
-        {/* Team Trend sub-section inserted here */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{
-            background: C.card,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            padding: '14px 16px',
-            boxShadow: `0 8px 20px ${C.shadowColor}`,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: "'Futura', 'Tomorrow', sans-serif" }}>Team Trend</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {(['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Monthly', 'Quarterly', 'Yearly'] as const).map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => setTrendWindow(b)}
-                    style={{
-                      background: b === trendWindow ? C.activeBg : 'transparent',
-                      color: b === trendWindow ? C.text : C.textDim,
-                      border: 'none', cursor: 'pointer', padding: '6px 10px', borderRadius: 999,
-                      fontSize: 11, fontWeight: 600, fontFamily: "'Tomorrow', sans-serif",
-                    }}
-                  >{b}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ width: '100%', minHeight: 220 }}>
-              <TeamTrendChart series={trendSeries} labels={trendLabels} />
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              {trendSeries.map((s) => (
-                <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, display: 'inline-block' }} />
-                  <div style={{ fontSize: 12, color: C.textDim }}>{s.name}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-            {/* Overall Team Motivation (inserted below Team Trend) */}
-            <div style={{ marginTop: 12, marginBottom: 14 }}>
-              <div style={{
-                background: C.card,
-                border: `1px solid ${C.border}`,
-                borderRadius: 16,
-                padding: '14px 16px',
-                boxShadow: `0 8px 20px ${C.shadowColor}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: "'Futura', 'Tomorrow', sans-serif" }}>Overall Team Motivation</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <label style={{ fontSize: 12, color: C.textDim, marginRight: 6 }}>Team member:</label>
-                    <select
-                      aria-label="Select team member"
-                      value={motivationMember}
-                      onChange={(e) => setMotivationMember(e.target.value)}
-                      style={{
-                        background: C.bg, border: `1px solid ${C.border}`, padding: '8px 10px', borderRadius: 8,
-                        fontSize: 13, color: C.text, cursor: 'pointer', fontFamily: "'Tomorrow', sans-serif",
-                      }}
-                    >
-                      <option>All members</option>
-                      <option>Mikey Ferraris</option>
-                      <option>Sara Williams</option>
-                      <option>Priya Shah</option>
-                      <option>Ben Carter</option>
-                      <option>Leo Park</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ width: '100%', minHeight: 260 }}>
-                  <TeamMotivationChart
-                    dimensions={motivationDimensions}
-                    teamAverage={teamAverage}
-                    individualScores={individualScores}
-                    selected={motivationMember}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 12, height: 8, background: C.teal, display: 'inline-block', borderRadius: 3 }} />
-                    <div style={{ fontSize: 12, color: C.textDim }}>Individual</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 12, height: 8, background: C.bgSub, display: 'inline-block', borderRadius: 3, border: `1px solid ${C.border}` }} />
-                    <div style={{ fontSize: 12, color: C.textDim }}>Team average</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+      {/* Overall Team Motivation (member list + placeholder) */}
+      <div style={{ marginTop: 12, marginBottom: 14 }}>
         <div style={{
           background: C.card,
           border: `1px solid ${C.border}`,
           borderRadius: 16,
-          overflow: 'hidden',
+          padding: '14px 16px',
+          boxShadow: `0 8px 20px ${C.shadowColor}`,
         }}>
-          {meetings.map((m, i) => {
-            const open = isOverall ? !closedMeetingIds.has(m.id) : openMeetingId === m.id;
-            const toggleOpen = () => {
-              if (isOverall) {
-                setClosedMeetingIds((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(m.id)) next.delete(m.id);
-                  else next.add(m.id);
-                  return next;
-                });
-              } else {
-                setOpenMeetingId(open ? null : m.id);
-              }
-            };
-            return (
-              <div key={m.id} style={{
-                borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
-              }}>
-                <button
-                  onClick={toggleOpen}
-                  onKeyDown={(e) => {
-                    // Arrow keys collapse / expand the meeting analysis.
-                    if ((e.key === 'ArrowUp' || e.key === 'ArrowLeft') && open) {
-                      e.preventDefault();
-                      toggleOpen();
-                    } else if ((e.key === 'ArrowDown' || e.key === 'ArrowRight') && !open) {
-                      e.preventDefault();
-                      toggleOpen();
-                    }
-                  }}
-                  aria-expanded={open}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '18px 22px',
-                    textAlign: 'left',
-                    color: C.text,
-                    fontFamily: "'Tomorrow', sans-serif",
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-                    {m.unread && (
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.teal, flexShrink: 0 }} />
-                    )}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontFamily: "'Futura', 'Tomorrow', sans-serif", color: C.text, marginBottom: 3 }}>
-                        {m.title}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: C.textDim }}>
-                        {m.date_label} · {m.duration_min}m · {m.team} · {m.participants.length} attendees
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleSync(m.id); }}
-                      aria-pressed={syncedIds.has(m.id)}
-                      title={syncedIds.has(m.id) ? 'Unsync from Sophia' : 'Sync with Sophia'}
-                      style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                    >
-                      <SophiaGlowOrb size={28} showWordmark={false} glow={syncedIds.has(m.id)} />
-                      <div style={{ fontSize: 11, color: syncedIds.has(m.id) ? C.text : C.textDim }}>{syncedIds.has(m.id) ? 'Synced' : 'Sync'}</div>
-                    </button>
-                    <ChevronDown size={16} style={{
-                      color: C.textDim,
-                      transition: 'transform 0.2s',
-                      transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-                      flexShrink: 0,
-                    }} />
-                  </div>
-                </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: "'Futura', 'Tomorrow', sans-serif" }}>Team Members</div>
+          </div>
 
-                {open && (
-                  <div style={{ padding: '0 22px 22px' }}>
-                    <div style={{ fontSize: 11.5, color: C.textDim, marginBottom: 14 }}>
-                      {m.participants.map((p, idx) => (
-                        <span key={p}>
-                          <button
-                            onClick={() => {
-                              const member = teamMembers.find((tm) => tm.name === p);
-                              if (member) setMotivation({ open: true, memberId: member.id });
-                            }}
-                            style={{
-                              background: 'transparent', border: 'none', padding: 0,
-                              color: C.text, cursor: 'pointer', fontSize: 11.5,
-                              textDecoration: 'underline', textUnderlineOffset: 3,
-                              textDecorationColor: C.border,
-                              fontFamily: "'Tomorrow', sans-serif",
-                            }}
-                          >
-                            {p}
-                          </button>
-                          {idx < m.participants.length - 1 ? ', ' : ''}
-                        </span>
-                      ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 12, alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {['Mikey Ferraris', 'Ben Carter', 'Sara Williams', 'Priya Shah', 'Anonymous'].map((name) => {
+                const m = teamMembers.find((t) => t.name === name) || null;
+                const active = m ? m.active : false;
+                return (
+                  <button
+                    key={name}
+                    onClick={() => openForMember(name)}
+                    style={{
+                      textAlign: 'left',
+                      background: active ? C.activeBg : C.bg,
+                      border: `1px solid ${C.border}`,
+                      color: C.text,
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: m?.colour ?? C.border, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.bg, fontWeight: 700 }}>
+                      {name.split(' ')[0].charAt(0)}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
-                      <ReflectionBlock label="What was good" colour="#C2F542" items={m.what_was_good} />
-                      <ReflectionBlock label="Blind spots" colour="#FFB28A" items={m.blind_spots} />
-                      <ReflectionBlock label="Insight" colour="#A0E0FF" items={[m.insight]} />
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: C.text, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+                      <div style={{ fontSize: 12, color: C.textDim }}>{m?.role ?? 'Anonymous'}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+              <div style={{ boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22, width: '100%', minWidth: 420, height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textDim, overflow: 'hidden' }}>
+                {sheetMemberId ? (
+                  <MotivationRadar
+                    size={380}
+                    series={[
+                      { label: (teamMembers.find((m) => m.id === sheetMemberId)?.name || 'Member').split(' ')[0], values: memberDrivers[sheetMemberId], colour: teamMembers.find((m) => m.id === sheetMemberId)?.colour || '#C2F542' },
+                      { label: 'Team avg', values: teamAverageDrivers, colour: '#A0E0FF', fill: '#A0E0FF' },
+                    ]}
+                  />
+                ) : sheetMemberName === 'Overall Team' ? (
+                  <MotivationRadar size={380} series={[{ label: 'Team avg', values: teamAverageDrivers, colour: '#A0E0FF' }]} />
+                ) : sheetMemberName ? (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '100%', maxWidth: 680, padding: '20px', borderRadius: 12, border: `1px dashed ${C.border}`, background: 'transparent', color: C.textDim, fontSize: 22, fontWeight: 700, textAlign: 'center', fontFamily: "'Tomorrow', sans-serif" }}>
+                      No data for this member.
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '100%', maxWidth: 680, padding: '20px', borderRadius: 12, background: 'transparent', color: C.textDim, fontSize: 22, fontWeight: 700, textAlign: 'center', fontFamily: "'Tomorrow', sans-serif" }}>
+                      Select a team member to view motivation
                     </div>
                   </div>
                 )}
               </div>
-            );
-          })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <button
+              onClick={() => openOverall()}
+              style={{
+                background: trendColour,
+                color: '#0A0A0C',
+                border: 'none',
+                borderRadius: 999,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontFamily: "'Futura', 'Tomorrow', sans-serif",
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+            >
+              Overall Team Motivation
+            </button>
+          </div>
         </div>
-      </Section>
+      </div>
 
       {/* ─── Glowing orb at the bottom (click → chat) ─── */}
       <div style={{

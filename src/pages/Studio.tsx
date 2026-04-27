@@ -14,7 +14,7 @@ import { recordings as mockRecordings, integrations as mockIntegrations, type In
 const sourceLabel: Record<string, string> = {
   mic: 'Recorded live',
   meeting: 'Live meeting capture',
-  fireflies: 'Imported from Fireflies',
+  fireflies: 'Imported from API',
   otter: 'Imported from Otter',
   granola: 'Imported from Granola',
   teams: 'Imported from Teams',
@@ -135,9 +135,9 @@ export default function Studio() {
           />
           <CaptureTile
             icon={<LinkIcon size={22} />}
-            title="Import from Fireflies"
-            blurb="Pull a Fireflies recording or transcript directly into Studio."
-            cta="Open Fireflies"
+            title="Import from API"
+            blurb="Pull a recording or transcript directly into Studio via the API."
+            cta="Open API"
             accent="#FF6F50"
           />
         </div>
